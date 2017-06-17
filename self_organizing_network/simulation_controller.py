@@ -1,9 +1,9 @@
 import pygame
 import threading
-from simulation_window import GameWindow
+from self_organizing_network.simulation_window import SimulationWindow
 
 
-class GameController:
+class SimulationController:
     """@brief Controller for Asteroids game.
     Class connecting the Asteroids game with user interface. Allows to modify speed and appearance of the game.
     @author Jakub Fajkowski
@@ -30,9 +30,9 @@ class GameController:
         Method that starts the game in separate thread. Allows to initialize game in normal and headless mode.
         :param headless: if true game will start in headless mode.
         """
-        self.current_game = GameWindow(game_over_listener=self.stats_window,
-                                       screen_update_listener=self.stats_window,
-                                       headless=headless)
+        self.current_game = SimulationWindow(finished_listener=self.stats_window,
+                                             tick_listener=self.stats_window,
+                                             headless=headless)
         self.current_game_thread = threading.Thread(target=self.current_game.run)
         self.current_game_thread.start()
 

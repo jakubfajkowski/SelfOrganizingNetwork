@@ -6,10 +6,13 @@ from self_organizing_network.object import Object
 class BaseStation(Object):
     def __init__(self, coordinates, power):
         image = pygame.image.load('base_station.png')
-        self._power = power
         super().__init__(image=image,
                          coordinates=coordinates,
                          image_scale=1)
+
+        self._power = power
+        self._mobile_stations = []
+
 
     def update(self, surface):
         self.direction += 1
@@ -34,3 +37,9 @@ class BaseStation(Object):
             return self._power / (4 * math.pi * distance_square)
         else:
             return float('inf')
+
+    def connect(self, mobile_station):
+        self._mobile_stations.append(mobile_station)
+
+    def disconnect(self, mobile_station):
+        self._mobile_stations.remove(mobile_station)

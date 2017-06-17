@@ -7,9 +7,10 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter import messagebox
 from self_organizing_network.son_controller import SONController
-from self_organizing_network.simulation_controller import GameController
+from self_organizing_network.simulation_controller import SimulationController
 import self_organizing_network.labels as labels
 import self_organizing_network.utils as c
+
 
 matplotlib.rcParams.update({'font.size': 8})
 matplotlib.use('TkAgg')
@@ -17,20 +18,24 @@ style.use('dark_background')
 
 
 class SONWindow(tk.Tk):
-    ## @brief Main class of the application - provides user interface.
-    ## Class is responsible for creating user interface and connecting it with proper controllers.
-    ## Allows user to manage and supervise learning process.
-    ## @authors Piotr Truszczynski, Jakub Fajkowski
+    """ 
+    @brief Main class of the application - provides user interface.
+           Class is responsible for creating user interface and connecting it with proper controllers.
+           Allows user to manage and supervise learning process.
+    @authors Piotr Truszczynski, Jakub Fajkowski
+    """
 
     def __init__(self):
-        """@brief Constructor for main frame and controllers.
-        Constructor responsible for creating main frame and all controllers. Sets up all GUI elements.
+        """
+        @brief Constructor for main frame and controllers.
+               Constructor responsible for creating main frame and all controllers. 
+               Sets up all GUI elements.
         """
         tk.Tk.__init__(self)
         self.wm_title(labels.title)
         self.resizable(0, 0)
-        self.machine_gaming_controller = MachineGamingController(stats_window=self)
-        self.game_controller = GameController(stats_window=self)
+        self.son_controller = SONController(stats_window=self)
+        self.sim_controller = SimulationController(stats_window=self)
 
         self.mean_gen_score_x = []
         self.mean_gen_score_y = []
@@ -65,39 +70,42 @@ class SONWindow(tk.Tk):
         self._add_plot()
 
     def run(self):
-        """@brief Starts the main loop of the interface.
-        Method used to initiate user interface and start it's main loop.
+        """
+        @brief Starts the main loop of the interface.
+               Method used to initiate user interface and start it's main loop.
         """
         self.protocol("WM_DELETE_WINDOW", self._quit)
         self.mainloop()
 
     def start(self, headless):
-        """@brief Starts the simulation
-        Method that starts the simulation if parameters of Evolutionary Algorithm have been defined.
-        Allows to initialize game in normal and headless mode by calling method from GameController class.
-        If user did not define or load algorithm from file, proper message will be displayed.
+        """
+        @brief Starts the simulation
+               Method that starts the simulation if parameters of Evolutionary Algorithm have been defined.
+               Allows to initialize game in normal and headless mode by calling method from GameController class.
+               If user did not define or load algorithm from file, proper message will be displayed.
         :param headless: if true game will start in headless mode.
         """
-        if self.machine_gaming_controller.ea is not None:
-            if self.game_controller.current_game is not None:
+        if self.son_controller.ea is not None:
+            if self.sim_controller.current_game is not None:
                 self.stop()
-            self.game_controller.start(headless=headless)
+            self.sim_controller.start(headless=headless)
         else:
             messagebox.showwarning(labels.msgbox_title[0], labels.msgbox_msg[0])
 
     def stop(self):
-        """@brief Stops the simulation if it's running.
-        If the simulation is running calls stop() method on GameController class. Also moves simulation speed
-        slider to the initial position.
+        """
+        @brief Stops the simulation if it's running.
+               If the simulation is running calls stop() method on GameController class. Also moves simulation speed
+               slider to the initial position.
         """
         self.speed_slider.set(1)
-        if self.game_controller.current_game is not None:
-            self.game_controller.stop()
+        if self.sim_controller.current_game is not None:
+            self.sim_controller.stop()
 
     def _add_controls(self):
         buttons_callbacks = [lambda: self.start(headless=True),
                              lambda: self.start(headless=False),
-                             self.stop, self.game_controller.change_lines,
+                             self.stop, self.sim_controller.change_lines,
                              self._enter_parameters, self._set_path_and_save,
                              self._set_path_and_load, self._quit]
 
@@ -139,7 +147,7 @@ class SONWindow(tk.Tk):
         speed_label = tk.Label(speed_slider_frame, text=labels.slider)
         speed_label.pack(side=tk.BOTTOM)
         self.speed_slider = tk.Scale(speed_slider_frame, orient='horizontal', length=350, width=10,
-                                     from_=1, to=10, resolution=0.1, command=self.game_controller.change_speed)
+                                     from_=1, to=10, resolution=0.1, command=self.sim_controller.change_speed)
         self.speed_slider.pack(side=tk.BOTTOM)
 
     def _add_plot(self):
@@ -164,13 +172,14 @@ class SONWindow(tk.Tk):
 
         create_button = tk.Button(
             param_frame, text=labels.create_button,
-            command=lambda: [self.machine_gaming_controller.initialize_ea(self._extract_str_from_entries(entries)),
+            command=lambda: [self.son_controller.initialize_ea(self._extract_str_from_entries(entries)),
                              self._update_ea_parameters(self._extract_str_from_entries(entries)),
                              self._reset_plots(),
                              param_frame.destroy()])
         create_button.grid(row=10, column=0, columnspan=2)
 
-    def _extract_str_from_entries(self, entries):
+    @staticmethod
+    def _extract_str_from_entries(entries):
         return [e.get() for e in entries]
 
     def _update_ea_parameters(self, parameters):
@@ -190,7 +199,7 @@ class SONWindow(tk.Tk):
             self.stat_label_vars[i].set(labels.stats[i] + str(current_stats[i]))
 
     def _quit(self):
-        if self.game_controller.current_game is not None:
+        if self.sim_controller.current_game is not None:
             messagebox.showwarning(labels.msgbox_title[3], labels.msgbox_msg[5])
         else:
             self.stop()
@@ -201,7 +210,7 @@ class SONWindow(tk.Tk):
         path = filedialog.asksaveasfilename(filetypes=labels.mg_filetype, initialfile=labels.initialfilename)
         if len(path) is 0:  # dialog closed with "cancel".
             return
-        if self.machine_gaming_controller.save(path):
+        if self.son_controller.save(path):
             messagebox.showinfo(labels.msgbox_title[1], labels.msgbox_msg[1])
         else:
             messagebox.showwarning(labels.msgbox_title[1], labels.msgbox_msg[2])
@@ -210,7 +219,7 @@ class SONWindow(tk.Tk):
         path = filedialog.askopenfilename(filetypes=labels.mg_filetype)
         if len(path) is 0:  # dialog closed with "cancel".
             return
-        success, parameters = self.machine_gaming_controller.load(path)
+        success, parameters = self.son_controller.load(path)
         if success:
             self._update_ea_parameters(parameters)
             self._reset_plots()
@@ -219,13 +228,13 @@ class SONWindow(tk.Tk):
             messagebox.showwarning(labels.msgbox_title[2], labels.msgbox_msg[4])
 
     def _on_game_over(self):  # listener for spaceship crashes
-        current_game_score = self.game_controller.current_game.score
+        current_game_score = self.sim_controller.current_game.score
         self._update_scores(current_game_score)
-        self.machine_gaming_controller.neural_network.fitness = current_game_score
-        self.machine_gaming_controller.process()
+        self.son_controller.neural_network.fitness = current_game_score
+        self.son_controller.process()
 
     def _on_screen_update(self, player, obstacles):
-        neural_network = self.machine_gaming_controller.neural_network
+        neural_network = self.son_controller.neural_network
         if neural_network is None:
             return
 
@@ -246,24 +255,25 @@ class SONWindow(tk.Tk):
             screen_state.append(delta_direction/180)
 
         screen_state_size = len(screen_state)
-        if screen_state_size < self.machine_gaming_controller.input_size:
-            screen_state += [0] * (self.machine_gaming_controller.input_size - screen_state_size)
+        if screen_state_size < self.son_controller.input_size:
+            screen_state += [0] * (self.son_controller.input_size - screen_state_size)
 
-        output_vector, buttons = self.game_controller.calculate_buttons(neural_network=neural_network,
-                                                                        input_vector=screen_state)
+        output_vector, buttons = self.sim_controller.calculate_buttons(neural_network=neural_network,
+                                                                       input_vector=screen_state)
 
-        if self.game_controller.current_game is not None:
-            self._update_stats(self.machine_gaming_controller.get_current_generation(),
-                               self.machine_gaming_controller.get_current_network(),
-                               self.game_controller.current_game.score,
+        if self.sim_controller.current_game is not None:
+            self._update_stats(self.son_controller.get_current_generation(),
+                               self.son_controller.get_current_network(),
+                               self.sim_controller.current_game.score,
                                output_vector)
 
         return buttons
-    #  Counts only networks from basic population - children get accounted only if they survive
+    # Counts only networks from basic population - children get accounted only if they survive
+
     def _update_scores(self, score):
-        current_network_number = self.machine_gaming_controller.get_current_network()
-        current_generation_number = self.machine_gaming_controller.get_current_generation()
-        population_size = self.machine_gaming_controller.ea.get_population_size()
+        current_network_number = self.son_controller.get_current_network()
+        current_generation_number = self.son_controller.get_current_generation()
+        population_size = self.son_controller.ea.get_population_size()
 
         if current_network_number < population_size:
             self._compare_scores(score)
@@ -297,7 +307,7 @@ class SONWindow(tk.Tk):
         self.best_gen_score.set_xlabel(labels.plot_xlabel)
         self.mean_gen_score.set_title(labels.plot_title[1])
         self.mean_gen_score.set_xlabel(labels.plot_xlabel)
-        self.canvas._draw_range()
+        # self.canvas._draw_range()
 
     def _reset_plots(self):
         self._clear_plots()
@@ -310,18 +320,6 @@ class SONWindow(tk.Tk):
     def _clear_plots(self):
         self.mean_gen_score.clear()
         self.best_gen_score.clear()
-
-    @staticmethod
-    def _direction_degrees(y, x):
-        direction_rad = math.atan2(y, x)
-        if direction_rad >= 0:
-            return math.degrees(direction_rad)
-        else:
-            return math.degrees(2*math.pi + direction_rad)
-
-    @staticmethod
-    def _direction_delta(x, y):
-        return -((x-y) % 360 + 180) % 360 - 180
 
 
 machine_gaming = SONWindow()
