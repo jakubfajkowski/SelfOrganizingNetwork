@@ -22,8 +22,8 @@ class SimulationWindow:
         self._screen = None
         self._clock = None
         self._pressed_buttons = set()
-        self._base_stations = pygame.sprite.Group()
-        self._mobile_stations = pygame.sprite.Group()
+        self._base_stations = []
+        self._mobile_stations = []
 
     def _init(self):
         pygame.init()
@@ -34,15 +34,15 @@ class SimulationWindow:
         self._add_mobile_stations(10)
 
     def _add_base_stations(self):
-        self._base_stations.add(BaseStation((100, 100), 650000))
-        self._base_stations.add(BaseStation((u.WINDOW_SIZE - 100, 100), 650000))
-        self._base_stations.add(BaseStation((100, u.WINDOW_SIZE - 100), 650000))
-        self._base_stations.add(BaseStation((u.WINDOW_SIZE - 100, u.WINDOW_SIZE - 100), 650000))
-        self._base_stations.add(BaseStation(u.CENTER_POINT, 200000))
+        self._base_stations.append(BaseStation((100, 100), 650000))
+        self._base_stations.append(BaseStation((u.WINDOW_SIZE - 100, 100), 650000))
+        self._base_stations.append(BaseStation((100, u.WINDOW_SIZE - 100), 650000))
+        self._base_stations.append(BaseStation((u.WINDOW_SIZE - 100, u.WINDOW_SIZE - 100), 650000))
+        self._base_stations.append(BaseStation(u.CENTER_POINT, 200000))
 
     def _add_mobile_stations(self, num):
         for _ in range(num):
-            self._mobile_stations.add(MobileStation(u.CENTER_POINT))
+            self._mobile_stations.append(MobileStation(u.CENTER_POINT))
 
     def restart(self):
         self.time_elapsed = 0
@@ -63,6 +63,7 @@ class SimulationWindow:
             for _ in self._pressed_buttons:
                 pass
 
+            self._refresh_connections()
             self._render()
 
         pygame.quit()
@@ -88,12 +89,28 @@ class SimulationWindow:
             self.running = False
 
     def _render(self):
-        self._screen.fill(u.COLOR_WHITE)
-        self._base_stations.update(self._screen)
-        self._mobile_stations.update(self._screen)
+        self._screen.fill(u.COLOR_LIGHT_GREY)
+        self._display_mobile_stations()
+        self._display_base_stations()
         self._display_time()
         self._display_fps()
         pygame.display.update()
+
+    def _display_mobile_stations(self):
+        for ms in self._mobile_stations:
+            self._display_connection(ms)
+            ms.update(self._screen)
+
+    def _display_connection(self, mobile_station):
+        if mobile_station.base_station is not None:
+            pygame.draw.line(self._screen,
+                             u.COLOR_GREEN,
+                             mobile_station.coordinates,
+                             mobile_station.base_station.coordinates)
+
+    def _display_base_stations(self):
+        for bs in self._base_stations:
+            bs.update(self._screen)
 
     def _display_time(self):
         font = pygame.font.SysFont("Consolas", 20)
@@ -105,8 +122,14 @@ class SimulationWindow:
         label = font.render("FPS: " + str(int(self._clock.get_fps())), 1, u.COLOR_BLACK)
         self._screen.blit(label, (10, 30))
 
-    def _display_connection(self, mobile_station):
-        pygame.draw.line(self._screen,
-                         u.COLOR_RED,
-                         mobile_station.coordinates,
-                         mobile_station.base_station.coordinates)
+    def _refresh_connections(self):
+        for ms in self._mobile_stations:
+            powers = []
+
+            for bs in self._base_stations:
+                bs_power_density_in_ms_location = bs.calculate_power_density(ms.coordinates)
+                powers.append(bs_power_density_in_ms_location)
+
+            max_value = max(powers)
+            max_index = powers.index(max_value)
+            ms.connect(self._base_stations[max_index])

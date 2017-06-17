@@ -6,17 +6,17 @@ from matplotlib import style
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import messagebox
-from son_controller import MachineGamingController
-from simulation_controller import GameController
-import labels
-import utils as c
+from self_organizing_network.son_controller import SONController
+from self_organizing_network.simulation_controller import GameController
+import self_organizing_network.labels as labels
+import self_organizing_network.utils as c
 
 matplotlib.rcParams.update({'font.size': 8})
 matplotlib.use('TkAgg')
 style.use('dark_background')
 
 
-class MachineGamingWindow(tk.Tk):
+class SONWindow(tk.Tk):
     ## @brief Main class of the application - provides user interface.
     ## Class is responsible for creating user interface and connecting it with proper controllers.
     ## Allows user to manage and supervise learning process.
@@ -324,7 +324,7 @@ class MachineGamingWindow(tk.Tk):
         return -((x-y) % 360 + 180) % 360 - 180
 
 
-machine_gaming = MachineGamingWindow()
+machine_gaming = SONWindow()
 
 
 if __name__ == '__main__':
