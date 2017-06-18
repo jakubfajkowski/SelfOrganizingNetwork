@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 bin/src/Asteroids/SONWindow.py
+python3 self_organizing_network/EAWindow.py

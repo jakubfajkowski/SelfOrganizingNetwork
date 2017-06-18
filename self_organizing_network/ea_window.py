@@ -243,7 +243,7 @@ class EAWindow(tk.Tk):
                                self.sim_controller.current.score,
                                output_vector)
 
-        POWER_RESOLUTION = 10
+        POWER_RESOLUTION = 100
         predicted_power_change = (output_vector[0] - output_vector[1]) * POWER_RESOLUTION
 
         return predicted_power_change
