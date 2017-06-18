@@ -32,16 +32,16 @@ class SimulationWindow:
         self._screen = pygame.display.set_mode(self._display_size, pygame.HWSURFACE | pygame.DOUBLEBUF)
         self._clock = pygame.time.Clock()
         self.running = True
-        self._add_base_stations(3, 3)
-        self._add_mobile_stations(10)
+        self._add_base_stations(u.DEFAULT_ROWS, u.DEFAULT_COLS)
+        self._add_mobile_stations(u.DEFAULT_MS)
 
     def _restart(self):
         self.time_elapsed = 0
         self.score = 0
         self._clock = pygame.time.Clock()
         self.running = True
-        self._add_base_stations(3, 3)
-        self._add_mobile_stations(10)
+        self._add_base_stations(u.DEFAULT_ROWS, u.DEFAULT_COLS)
+        self._add_mobile_stations(u.DEFAULT_MS)
 
     def _add_base_stations(self, rows, cols):
         self._base_stations = []
