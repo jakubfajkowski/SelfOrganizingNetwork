@@ -6,7 +6,7 @@ from matplotlib import style
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import messagebox
-from self_organizing_network.son_controller import SONController
+from self_organizing_network.ea_controller import EAController
 from self_organizing_network.simulation_controller import SimulationController
 import self_organizing_network.labels as labels
 import self_organizing_network.utils as c
@@ -17,24 +17,12 @@ matplotlib.use('TkAgg')
 style.use('dark_background')
 
 
-class SONWindow(tk.Tk):
-    """ 
-    @brief Main class of the application - provides user interface.
-           Class is responsible for creating user interface and connecting it with proper controllers.
-           Allows user to manage and supervise learning process.
-    @authors Piotr Truszczynski, Jakub Fajkowski
-    """
-
+class EAWindow(tk.Tk):
     def __init__(self):
-        """
-        @brief Constructor for main frame and controllers.
-               Constructor responsible for creating main frame and all controllers. 
-               Sets up all GUI elements.
-        """
         tk.Tk.__init__(self)
         self.wm_title(labels.title)
         self.resizable(0, 0)
-        self.son_controller = SONController(stats_window=self)
+        self.son_controller = EAController(stats_window=self)
         self.sim_controller = SimulationController(stats_window=self)
 
         self.mean_gen_score_x = []
@@ -70,42 +58,26 @@ class SONWindow(tk.Tk):
         self._add_plot()
 
     def run(self):
-        """
-        @brief Starts the main loop of the interface.
-               Method used to initiate user interface and start it's main loop.
-        """
         self.protocol("WM_DELETE_WINDOW", self._quit)
         self.mainloop()
 
     def start(self, headless):
-        """
-        @brief Starts the simulation
-               Method that starts the simulation if parameters of Evolutionary Algorithm have been defined.
-               Allows to initialize game in normal and headless mode by calling method from GameController class.
-               If user did not define or load algorithm from file, proper message will be displayed.
-        :param headless: if true game will start in headless mode.
-        """
         if self.son_controller.ea is not None:
-            if self.sim_controller.current_game is not None:
+            if self.sim_controller.current is not None:
                 self.stop()
             self.sim_controller.start(headless=headless)
         else:
             messagebox.showwarning(labels.msgbox_title[0], labels.msgbox_msg[0])
 
     def stop(self):
-        """
-        @brief Stops the simulation if it's running.
-               If the simulation is running calls stop() method on GameController class. Also moves simulation speed
-               slider to the initial position.
-        """
         self.speed_slider.set(1)
-        if self.sim_controller.current_game is not None:
+        if self.sim_controller.current is not None:
             self.sim_controller.stop()
 
     def _add_controls(self):
         buttons_callbacks = [lambda: self.start(headless=True),
                              lambda: self.start(headless=False),
-                             self.stop, self.sim_controller.change_lines,
+                             self.stop, self.sim_controller.change_view,
                              self._enter_parameters, self._set_path_and_save,
                              self._set_path_and_load, self._quit]
 
@@ -187,7 +159,7 @@ class SONWindow(tk.Tk):
             self.eap_label_vars[i].set(labels.params[i] + str(parameters[i]))
 
     def _update_stats(self, current_gen_num, current_nn_num, current_score, current_output):
-        current_probs = [(x, round(y, 2)) for x, y in zip(["W", "S", "A", "D", "ENT"], current_output)]
+        current_probs = [(x, round(y, 2)) for x, y in zip(["+", "-"], current_output)]
 
         current_stats = [current_gen_num,
                          current_nn_num,
@@ -199,7 +171,7 @@ class SONWindow(tk.Tk):
             self.stat_label_vars[i].set(labels.stats[i] + str(current_stats[i]))
 
     def _quit(self):
-        if self.sim_controller.current_game is not None:
+        if self.sim_controller.current is not None:
             messagebox.showwarning(labels.msgbox_title[3], labels.msgbox_msg[5])
         else:
             self.stop()
@@ -227,48 +199,60 @@ class SONWindow(tk.Tk):
         else:
             messagebox.showwarning(labels.msgbox_title[2], labels.msgbox_msg[4])
 
-    def _on_game_over(self):  # listener for spaceship crashes
-        current_game_score = self.sim_controller.current_game.score
-        self._update_scores(current_game_score)
-        self.son_controller.neural_network.fitness = current_game_score
+    def on_finish(self):
+        current_score = self.sim_controller.current.score
+        self._update_scores(current_score)
+        self.son_controller.neural_network.fitness = current_score
         self.son_controller.process()
 
-    def _on_screen_update(self, player, obstacles):
+    def on_tick(self, base_station, mobile_stations):
         neural_network = self.son_controller.neural_network
         if neural_network is None:
             return
 
-        screen_state = [(player.coordinates.x - c.CENTER_POINT.x)/c.WINDOW_SIZE*2,
-                        (player.coordinates.y - c.CENTER_POINT.y)/c.WINDOW_SIZE*2,
-                        (player.direction - 180)/180]
+        sim_state = []
 
-        for obstacle in obstacles:
-            delta_x = obstacle.coordinates.x - player.coordinates.x
-            delta_y = - (obstacle.coordinates.y - player.coordinates.y)  # because cartesian but upside down
+        if base_station.is_on():
+            sim_state.append(base_station.get_power())
+        else:
+            sim_state.append(0)
 
-            obstacle_direction = self._direction_degrees(delta_y, delta_x)
-            delta_direction = self._direction_delta(obstacle_direction, player.direction)
+        for neighbour in base_station.get_neighbours():
+            if neighbour.is_on():
+                sim_state.append(base_station.get_power())
+            else:
+                sim_state.append(0)
 
-            distance_to_obstacle = player.coordinates.calculate_distance(obstacle.coordinates)
+        # for ms in mobile_stations:
+        #     if ms.base_station is base_station:
+        #         sim_state.append(ms.power)
+        #     else:
+        #         sim_state.append(0)
 
-            screen_state.append(distance_to_obstacle/c.WINDOW_SIZE*2)
-            screen_state.append(delta_direction/180)
+        self._fill_with_zeros(sim_state)
 
-        screen_state_size = len(screen_state)
-        if screen_state_size < self.son_controller.input_size:
-            screen_state += [0] * (self.son_controller.input_size - screen_state_size)
+        output_vector = self.sim_controller.predict_power_change(neural_network=neural_network,
+                                                                 input_vector=sim_state)
 
-        output_vector, buttons = self.sim_controller.calculate_buttons(neural_network=neural_network,
-                                                                       input_vector=screen_state)
+        # print("INPUT: ", sim_state)
+        # print("OUTPUT: ", output_vector)
 
-        if self.sim_controller.current_game is not None:
+        if self.sim_controller.current is not None:
             self._update_stats(self.son_controller.get_current_generation(),
                                self.son_controller.get_current_network(),
-                               self.sim_controller.current_game.score,
+                               self.sim_controller.current.score,
                                output_vector)
 
-        return buttons
+        POWER_RESOLUTION = 10
+        predicted_power_change = (output_vector[0] - output_vector[1]) * POWER_RESOLUTION
+
+        return predicted_power_change
     # Counts only networks from basic population - children get accounted only if they survive
+
+    def _fill_with_zeros(self, input_vector):
+        input_vector_size = len(input_vector)
+        if input_vector_size < self.son_controller.input_size:
+            input_vector += [0] * (self.son_controller.input_size - input_vector_size)
 
     def _update_scores(self, score):
         current_network_number = self.son_controller.get_current_network()
@@ -307,7 +291,7 @@ class SONWindow(tk.Tk):
         self.best_gen_score.set_xlabel(labels.plot_xlabel)
         self.mean_gen_score.set_title(labels.plot_title[1])
         self.mean_gen_score.set_xlabel(labels.plot_xlabel)
-        # self.canvas._draw_range()
+        self.canvas.draw()
 
     def _reset_plots(self):
         self._clear_plots()
@@ -322,7 +306,7 @@ class SONWindow(tk.Tk):
         self.best_gen_score.clear()
 
 
-machine_gaming = SONWindow()
+machine_gaming = EAWindow()
 
 
 if __name__ == '__main__':

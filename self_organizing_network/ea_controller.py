@@ -1,7 +1,7 @@
 import self_organizing_network.pyvolution as pv
 
 
-class SONController:
+class EAController:
     def __init__(self, stats_window):
         self.stats_window = stats_window
         self.input_size = 0
@@ -15,8 +15,8 @@ class SONController:
         p.crossover_probability = float(parameters[2])
         p.mutation_probability = float(parameters[3])
         p.hidden_layers = int(parameters[4])
-        p.input_size = 13
-        p.output_size = 5
+        p.input_size = 7
+        p.output_size = 2
         p.weight_variance = float(parameters[5])
         self.ea = pv.EvolutionaryAlgorithm(p)
         self.input_size = p.input_size
