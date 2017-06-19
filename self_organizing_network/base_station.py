@@ -10,6 +10,7 @@ class BaseStation(Object):
                          coordinates=coordinates,
                          image_scale=1)
 
+        self._off = False
         self._power = power
         self._mobile_stations = []
         self._neighbours = []
@@ -50,19 +51,28 @@ class BaseStation(Object):
         return self._mobile_stations
 
     def change_power_by(self, power_change):
-        self._power += power_change
-        if self._power < 0:
-            self._power = 0
+        if not self._off:
+            self._power += power_change
+        if self._power < 1:
+            self._power = 1
+        if self._power > u.MAX_BASE_STATION_POWER:
+            self._power = u.MAX_BASE_STATION_POWER
 
     def get_power(self):
         return self._power
 
     def is_on(self):
-        return self._power != 0
+        return self._power > 1
+
+    def turn_off(self):
+        self._off = True
+        self._power = 1
 
     def add_neighbour(self, base_station):
-        if base_station != None:
-            self._neighbours.append(base_station)
+        self._neighbours.append(base_station)
 
     def get_neighbours(self):
         return self._neighbours
+
+    def has_free_channels(self):
+        return len(self._mobile_stations) < u.MAX_BS_CAPACITY

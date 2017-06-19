@@ -15,8 +15,8 @@ class EAController:
         p.crossover_probability = float(parameters[2])
         p.mutation_probability = float(parameters[3])
         p.hidden_layers = int(parameters[4])
-        p.input_size = 7
-        p.output_size = 2
+        p.input_size = 14
+        p.output_size = 3
         p.weight_variance = float(parameters[5])
         self.ea = pv.EvolutionaryAlgorithm(p)
         self.input_size = p.input_size

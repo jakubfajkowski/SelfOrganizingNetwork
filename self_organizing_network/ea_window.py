@@ -1,4 +1,3 @@
-import math
 import matplotlib
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -9,7 +8,6 @@ from tkinter import messagebox
 from self_organizing_network.ea_controller import EAController
 from self_organizing_network.simulation_controller import SimulationController
 import self_organizing_network.labels as labels
-import self_organizing_network.utils as c
 
 
 matplotlib.rcParams.update({'font.size': 8})
@@ -159,7 +157,7 @@ class EAWindow(tk.Tk):
             self.eap_label_vars[i].set(labels.params[i] + str(parameters[i]))
 
     def _update_stats(self, current_gen_num, current_nn_num, current_score, current_output):
-        current_probs = [(x, round(y, 2)) for x, y in zip(["+", "-"], current_output)]
+        current_probs = [(x, round(y, 3)) for x, y in zip(["+", "=", "-"], current_output)]
 
         current_stats = [current_gen_num,
                          current_nn_num,
@@ -213,14 +211,21 @@ class EAWindow(tk.Tk):
         sim_state = []
 
         if base_station.is_on():
-            sim_state.append(base_station.get_power())
+            sim_state.append(base_station.get_power() / 1000)
+            sim_state.append(len(base_station.get_mobile_stations()))
         else:
+            sim_state.append(0)
             sim_state.append(0)
 
         for neighbour in base_station.get_neighbours():
-            if neighbour.is_on():
-                sim_state.append(base_station.get_power())
+            if neighbour is not None and neighbour.is_on():
+                sim_state.append(neighbour.get_power() / base_station.get_power())
+                if len(neighbour.get_mobile_stations()) > 0:
+                    sim_state.append(1)
+                else:
+                    sim_state.append(0)
             else:
+                sim_state.append(0)
                 sim_state.append(0)
 
         # for ms in mobile_stations:
@@ -234,8 +239,11 @@ class EAWindow(tk.Tk):
         output_vector = self.sim_controller.predict_power_change(neural_network=neural_network,
                                                                  input_vector=sim_state)
 
-        # print("INPUT: ", sim_state)
-        # print("OUTPUT: ", output_vector)
+        for i in range(len(output_vector)):
+            output_vector[i] = round(output_vector[i], 3)
+
+        #print("INPUT: ", sim_state)
+        #print("OUTPUT: ", output_vector)
 
         if self.sim_controller.current is not None:
             self._update_stats(self.son_controller.get_current_generation(),
@@ -244,10 +252,16 @@ class EAWindow(tk.Tk):
                                output_vector)
 
         POWER_RESOLUTION = 100
-        predicted_power_change = (output_vector[0] - output_vector[1]) * POWER_RESOLUTION
-
-        return predicted_power_change
-    # Counts only networks from basic population - children get accounted only if they survive
+        action = max(output_vector)
+        if output_vector.count(action) == 1:
+            action_index = output_vector.index(action)
+            if action_index == 0:
+                return action * POWER_RESOLUTION
+            elif action_index == 1:
+                return 0
+            elif action_index == 2:
+                return - action * POWER_RESOLUTION
+        return 0
 
     def _fill_with_zeros(self, input_vector):
         input_vector_size = len(input_vector)

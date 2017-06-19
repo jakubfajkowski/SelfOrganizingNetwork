@@ -18,6 +18,7 @@ class SimulationWindow:
 
         self.time_elapsed = 0
         self.score = 0
+        self.times_disconnected = 0
         self.speed = u.DEFAULT_SPEED
         self.display_connections = False
         self.running = False
@@ -38,6 +39,7 @@ class SimulationWindow:
     def _restart(self):
         self.time_elapsed = 0
         self.score = 0
+        self.times_disconnected = 0
         self._clock = pygame.time.Clock()
         self.running = True
         self._add_base_stations(u.DEFAULT_ROWS, u.DEFAULT_COLS)
@@ -49,6 +51,7 @@ class SimulationWindow:
         self._assign_neighbours(rows, cols)
 
     def _create_base_stations(self, rows, cols):
+        power_variance = u.DEFAULT_BASE_STATION_POWER / 10
         x_offset = u.WINDOW_SIZE / cols
         y_offset = u.WINDOW_SIZE / rows
 
@@ -57,13 +60,16 @@ class SimulationWindow:
                 for x in range(cols):
                     self._base_stations.append(BaseStation((x_offset / 2 + x * x_offset,
                                                             y_offset / 2 + y * y_offset),
-                                                           u.DEFAULT_BASE_STATION_POWER))
+                                                           u.DEFAULT_BASE_STATION_POWER
+                                                           + random.randrange(-power_variance, power_variance)))
             else:
                 for x in range(cols + 1):
                     self._base_stations.append(BaseStation((x * x_offset,
                                                             y_offset / 2 + y * y_offset),
-                                                           u.DEFAULT_BASE_STATION_POWER))
+                                                           u.DEFAULT_BASE_STATION_POWER
+                                                           + random.randrange(-power_variance, power_variance)))
 
+        # self._base_stations[random.randrange(0, len(self._base_stations))].turn_off()
 
     def _assign_neighbours(self, rows, cols):
         for y in range(rows):
@@ -122,7 +128,7 @@ class SimulationWindow:
             self._render()
             self._tick()
 
-            if self.time_elapsed == u.DEFAULT_DURATION:
+            if self.time_elapsed == u.DEFAULT_DURATION or self.times_disconnected > u.DISCONNECTED_TOLERANCE:
                 self._finish()
                 self._restart()
 
@@ -145,15 +151,18 @@ class SimulationWindow:
 
     def _refresh_score(self):
         for ms in self._mobile_stations:
-            score = 1
+            powers_sum = 0
             for bs in self._base_stations:
-                if bs.is_on():
-                    score /= (bs.get_power() / 1000)
+                powers_sum += bs.get_power()
+                if bs.get_power() == u.MAX_BASE_STATION_POWER or bs.get_power() == 1:
+                    self._finish()
+                    self._restart()
+            modifier = powers_sum/len(self._base_stations)
 
             if ms.is_connected():
-                self.score += score
+                self.score += 1/modifier
             else:
-                self.score -= score
+                self.score -= 1/modifier
 
 
     def _refresh_connections(self):
@@ -165,8 +174,11 @@ class SimulationWindow:
                     ms.base_station.disconnect(ms)
                     ms.disconnect()
                 if bs is not None:
-                    bs.connect(ms)
-                    ms.connect(bs)
+                    if bs.has_free_channels():
+                        bs.connect(ms)
+                        ms.connect(bs)
+                else:
+                    self.times_disconnected += 1
 
             ms.power = power
 
